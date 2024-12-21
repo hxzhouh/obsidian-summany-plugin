@@ -1,0 +1,9 @@
+{
+  "baseUrl": "https://www.gptapi.us",
+  "apiKey": "sk-XFbLPaan93sPbFadE64a29C343B546F1878e64214d8f1cAb",
+  "model": [
+    "gpt-4o-mini",
+    "gpt-4o"
+  ],
+  "customPrompt": "Please highlight the main points of the following article and be concise and easy to understand, suitable for sharing on social media, and the length should not exceed the x limit of 140 characters."
+}
