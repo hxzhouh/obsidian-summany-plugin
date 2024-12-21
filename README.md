@@ -3,21 +3,21 @@ This is an Obsidian plugin that generates concise summaries for your notes using
 It reads the content from the active Markdown editor and automatically adds the summary under the Summany key in the frontmatter.
 
 ## How It Works
-• The main logic is implemented in the SummanyPlugin class from main.ts.
-• Plugin settings, such as baseUrl, apiKey, model, and customPrompt, are configured via the SummanySettingTab class in SettingTab.ts.
+- The main logic is implemented in the SummanyPlugin class from main.ts.
+- Plugin settings, such as baseUrl, apiKey, model, and customPrompt, are configured via the SummanySettingTab class in SettingTab.ts.
 
 ## Installation
 Copy main.js, manifest.json, and styles.css to your Vault’s .obsidian/plugins/summany-plugin folder.
 Enable the Summany Plugin from Obsidian’s settings.
-Usage
+### Usage
 Open a Markdown note.
 Run the “Generate Summary” command from the command palette to generate a summary.
 The plugin updates your frontmatter with the summary.
-Settings
+### Settings
 Go to “Summany Plugin” in Obsidian’s settings to specify:
-• Base URL for requests
-• API key for authentication
-• Model names
-• A custom prompt for generating summaries
+1. Base URL for requests
+1. API key for authentication
+1. Model names
+1. A custom prompt for generating summaries
 
 Enjoy summarizing your notes efficiently!
