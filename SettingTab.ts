@@ -1,6 +1,7 @@
-import { App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian';
+import { App,  PluginSettingTab,  Setting } from 'obsidian';
 import SummanyPlugin from './main';
-
+import { checkOpenAIConfig } from './OpenAi';  
+import { checkGeminiConfigBySdk } from './gemini'; 
 export class SummanySettingTab extends PluginSettingTab {
     plugin: SummanyPlugin;
 
@@ -12,7 +13,22 @@ export class SummanySettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-
+        new Setting(containerEl)
+            .setName('Gemini API Key')
+            .setDesc('')
+            .addText(text =>
+                text.setPlaceholder('Gemini API Key') .setPlaceholder('https://aistudio.google.com/app/apikey')
+                    .setValue(this.plugin.settings.geminiApiKey).onChange(async (value) => {
+                        this.plugin.settings.geminiApiKey = value;
+                        await this.plugin.saveSettings();
+                    })
+                )
+                .addButton(button => {
+                    button.setButtonText('Check')
+                      .onClick(async () => {
+                        await checkGeminiConfigBySdk(this.plugin);
+                      });
+                  });
         new Setting(containerEl)
             .setName('Base URL(Optional)')
             .setDesc('For 3rd party OpenAI Format endpoints only. Leave blank for other providers')
@@ -69,37 +85,10 @@ export class SummanySettingTab extends PluginSettingTab {
                     .setButtonText('Check')
                     .setCta()
                     .onClick(async () => {
-                        await this.checkOpenAIConfig(); // 触发检查
+                        await checkOpenAIConfig(this.plugin); // 触发检查
                     })
             );
     }
-    async checkOpenAIConfig() {
-        const { baseUrl, apiKey } = this.plugin.settings;
-        if (!apiKey) {
-            new Notice('API Key is not set!');
-            return;
-        }
 
-        // 如果未设置 Base URL，可以使用默认 OpenAI Endpoint
-        let finalUrl = baseUrl || 'https://api.openai.com/';
-        finalUrl=finalUrl+"/v1/models";
-
-        try {
-            const result = await requestUrl({
-                url: finalUrl,
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${apiKey}`
-                }
-            });
-            if (result.status === 200) {
-                new Notice('Success! Your configuration is valid.');
-            } else {
-                new Notice(`Request failed with status: ${result.status}`);
-            }
-        } catch (error) {
-            new Notice(`Request failed. Error: ${error}`);
-        }
-    }
 }
 export {};
