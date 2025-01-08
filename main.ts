@@ -1,10 +1,10 @@
-import { MarkdownView, Notice, Plugin, PluginSettingTab, Setting, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
-import { SummanySettingTab } from './SettingTab';
-import { GenerateSummany } from './generate';
+import { MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
+import { SummanySettingTab } from './src/SettingTab';
+import { GenerateSummany } from './src/generate';
+import { GenerateTranslate } from './src/generate';
 // Remember to rename these classes and interfaces!
 
 interface SummanyPluginSettings {
-
     baseUrl: string;
 	apiKey: string;
 	model:string[];
@@ -30,12 +30,70 @@ export default class SummanyPlugin extends Plugin {
             name: 'Generate Summary',
             callback: () => this.addSummany(),
         });
+		this.addCommand({
+			id: 'translate by Ai',
+			name: 'translate by Ai',
+			callback: () => this.translateByAi(),
+		})
     }
 
     onunload() {
         // Any cleanup logic when the plugin is disabled
     }
 
+	async translateByAi() {
+		 // 获取当前活动的文件
+		 const activeFile = this.app.workspace.getActiveFile();
+		 if (!activeFile) {
+			 // 如果没有活动文件，返回
+			 return;
+		 }
+	 
+		 // 获取当前文件所在的目录路径
+		 const currentFolder = activeFile.parent?.path || "";
+		 
+		 // 生成新文件名 (例如：原文件名-translated.md)
+		 const newFileName = `${activeFile.basename}-translated.md`;
+		 const newFilePath = `${currentFolder}/${newFileName}`;
+		 const editorContent=this.readLoaclFile();
+		 console.log(editorContent);
+		 try {
+			 // 创建新文件
+			 await this.app.vault.create(
+				 newFilePath,
+				 await editorContent || "",
+			 );
+		 } catch (error) {
+			 console.error("创建文件失败:", error);
+		 }
+	}
+
+	async readLoaclFile() {
+		// 获取当前活动的文件
+		const activeFile = this.app.workspace.getActiveFile();
+		if (!activeFile) {
+			return;
+		}
+	
+		// 从编辑器获取内容
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const editorContent = activeView?.editor.getValue();
+		
+		  // 移除YAML frontmatter
+		  if (editorContent) {
+			  const processedContent = editorContent.replace(/^---\n([\s\S]*?)\n---\n/, '');
+			  if (processedContent){
+				const translateContent =await GenerateTranslate(this,processedContent);
+				return translateContent;
+			  }else{
+				  new Notice("没有内容");
+				  return "";
+			  }
+		  } else {
+			  new Notice("没有内容");
+			  return "";
+		  }
+	}
     async addSummany() {
 		const activeLeaf = this.app.workspace.activeLeaf;
 		if (!activeLeaf) return;
