@@ -1,10 +1,11 @@
-import { MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
+import { MarkdownView, MetadataCache, Notice, Plugin, PluginSettingTab, Setting, TFile, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
 import { SummanySettingTab } from './src/SettingTab';
 import { GenerateSummany } from './src/generate';
 import { GenerateTranslate } from './src/generate';
 // Remember to rename these classes and interfaces!
 
 interface SummanyPluginSettings {
+	devToApiKey: string;
     baseUrl: string;
 	apiKey: string;
 	model:string[];
@@ -13,12 +14,26 @@ interface SummanyPluginSettings {
 }
 
 const DEFAULT_SETTINGS: SummanyPluginSettings = {
+	devToApiKey: '',
     baseUrl: '',
 	apiKey: '',
 	model: [],
 	customPrompt: 'Please summarize the following article into a paragraph of no more than 150 words, highlighting the main points and making it concise and easy to understand.',
 	geminiApiKey: '',
 };
+
+const chineseFooter = (slug: string) => `\n---\n
+- [本文长期连接](${slug})
+- 如果您觉得我的博客对你有帮助，请通过 [RSS](https://huizhou92.com/index.xml)订阅我。
+- 或者在[X](https://x.com/@piaopiaopig)上关注我。
+- 如果您有[Medium](https://medium.huizhou92.com/)账号，能给我个关注嘛？我的文章第一时间都会发布在Medium。`;
+
+const englishFooter = (slug: string) => `\n---\n
+- [Long Time Link](${slug})
+- If you find my blog helpful, please subscribe to me via [RSS](https://huizhou92.com/index.xml)
+- Or follow me on [X](https://x.com/@piaopiaopig)
+-  If you have a [Medium](https://medium.huizhou92.com/) account, follow me there. My articles will be published there as soon as possible.`
+
 export default class SummanyPlugin extends Plugin {
 	settings: SummanyPluginSettings;
 
@@ -35,12 +50,67 @@ export default class SummanyPlugin extends Plugin {
 			name: 'translate by Ai',
 			callback: () => this.translateByAi(),
 		})
+		this.addCommand({
+			id: 'generate-slug',
+			name: 'Generate Slug',
+			callback: async () => {
+		
+			  const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			  if (!activeView) {
+				new Notice('No active markdown view');
+				return;
+			  }
+			  if (!activeView.file) {
+				new Notice('No active file');
+				return;
+			  }
+			  //在这里判断文件名是否包含 zh-cn
+			  const isZhCN = activeView.file.path.includes('zh-cn');
+
+			  const metadataCache = this.app.metadataCache.getFileCache(activeView.file);
+	
+			  const title = metadataCache?.frontmatter?.["title"]
+			  var footer = "";
+			  let slug = await this.generateSlug(title);
+			  if (metadataCache && metadataCache.frontmatter) {
+				  const frontmatter = metadataCache.frontmatter;
+				  if (isZhCN) {
+					// 如果是中文，转成 url编码
+					slug = encodeURIComponent(slug);
+					frontmatter["slug"] = slug;
+					frontmatter["long_time_url"] = `https://www.huizhou92.com/zh-cn/p/${slug}/`;
+					footer = chineseFooter(`https://huizhou92.com/zh-cn/p/${slug}/`);
+				  } else {
+					frontmatter["slug"] = slug;
+					frontmatter["long_time_url"] = `https://www.huizhou92.com/p/${slug}/`;
+					footer = englishFooter(`https://huizhou92.com/p/${slug}/`);
+				  }
+				  // 将 footer 添加到文件的最后面
+				  const content = activeView.editor.getValue();
+				  const newContent = `${content}\n${footer}`;
+				  activeView.editor.setValue(newContent);
+				  const yamlRegex = /^---\n([\s\S]*?)\n---/;
+				  const newFrontmatter = `---\n${stringifyYaml(frontmatter)}---`;
+				  activeView.editor.setValue(newContent.replace(yamlRegex, newFrontmatter));
+			  } else {
+				  new Notice('Metadata or frontmatter is null or undefined');
+			  }
+			},
+		})
     }
+	
 
     onunload() {
         // Any cleanup logic when the plugin is disabled
     }
 
+	async generateSlug(title: string) {
+		return title
+			.toLowerCase() // 将字符串转换为小写
+			.replace(/[\s]+/g, '-') // 将空格替换为短横线
+			.replace(/[^\w\u4e00-\u9fa5\-]/g, '') // 移除特殊字符，保留字母、数字、汉字和短横线
+			.replace(/-+/g, '-'); // 将连续的短横线替换为单个短横线
+	}
 	async translateByAi() {
 		 // 获取当前活动的文件
 		 const activeFile = this.app.workspace.getActiveFile();

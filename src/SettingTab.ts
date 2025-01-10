@@ -18,6 +18,22 @@ export class SummanySettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         new Setting(containerEl)
+        .setName('DEV Community API Keys.(https://dev.to/settings/extensions)')
+        .setDesc(
+            sanitizeHTMLToDom(
+              "<b>Security warning!</b><br />This will be stored unencrypted in your obsidian plugin folder. Do not use this plugin if you do not fully understand the security implications of this.",
+            ),
+          )
+          .addText((text) =>
+            text
+              .setPlaceholder("Enter your secret")
+              .setValue(this.plugin.settings.devToApiKey)
+              .onChange(async (value) => {
+                this.plugin.settings.devToApiKey = value;
+                await this.plugin.saveSettings();
+              }),
+          );
+        new Setting(containerEl)
             .setName('Gemini API Key')
             .setDesc('')
             .addText(text =>
