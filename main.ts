@@ -96,7 +96,17 @@ export default class SummanyPlugin extends Plugin {
 				  new Notice('Metadata or frontmatter is null or undefined');
 			  }
 			},
-		})
+			});
+			this.addCommand({
+				id: 'increase-heading-level',
+				name: 'Increase Heading Level',
+				callback: () => this.changeHeadingLevel(1),
+			});
+			this.addCommand({
+				id: 'decrease-heading-level',
+				name: 'Decrease Heading Level',
+				callback: () => this.changeHeadingLevel(-1),
+			});
     }
 	
 
@@ -192,6 +202,30 @@ export default class SummanyPlugin extends Plugin {
 			 editor.setValue(newFrontmatter);
 		 }
 		 new Notice('Summany Generated!');
+	}
+	async changeHeadingLevel(change: number) {
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!activeView) {
+			new Notice('No active markdown view');
+			return;
+		}
+		const editor = activeView.editor;
+		const content = editor.getValue();
+		const lines = content.split('\n');
+		const updatedLines = lines.map(line => {
+			if (line.startsWith('#')) {
+				if (change > 0 && line.startsWith('######')) {
+					return line; // 如果已经是最高级别，则不做任何改变
+				}
+				if (change < 0 && !line.startsWith('# ')) {
+					return line; // 如果已经是最低级别，则不做任何改变
+				}
+				return change > 0 ? '#' + line : line.replace(/^#/, '');
+			}
+			return line;
+		});
+		editor.setValue(updatedLines.join('\n'));
+		new Notice('Heading levels updated!');
 	}
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
