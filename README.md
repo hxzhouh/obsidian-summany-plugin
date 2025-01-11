@@ -1,13 +1,17 @@
-## Summany Plugin
-This is an Obsidian plugin that generates concise summaries for your notes using OpenAI-like interfaces.
-It reads the content from the active Markdown editor and automatically adds the summary under the Summany key in the frontmatter.
+## hugo-copilot
+This is a plug-in specially designed for Hugo users, which aims to help Hugo users complete blog creation smoothly.
+The functions provided are:
+1. Generate an article summary
+2. Extract slug
+3. One-click to raise or lower the title level
+4. Support one-click translation
 
 ## How It Works
 - The main logic is implemented in the SummanyPlugin class from main.ts.
 - Plugin settings, such as baseUrl, apiKey, model, and customPrompt, are configured via the SummanySettingTab class in SettingTab.ts.
 
 ## Installation
-Copy main.js, manifest.json, and styles.css to your Vault’s .obsidian/plugins/summany-plugin folder.
+Copy main.js, manifest.json, and styles.css to your Vault’s .obsidian/plugins/hugo-copilot folder.
 Enable the Summany Plugin from Obsidian’s settings.
 ### Usage
 Open a Markdown note.

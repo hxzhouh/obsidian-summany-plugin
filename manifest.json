@@ -1,9 +1,9 @@
 {
-	"id": "summany-plugin",
-	"name": "Copilot summany Plugin",
+	"id": "hugo-copilot",
+	"name": "hugo copilot Plugin",
 	"version": "0.0.1",
 	"minAppVersion": "0.15.0",
-	"description": " a summany plugin  in Obsidian with Copilot",
+	"description": " a hugo-copilot in Obsidian with Copilot",
 	"author": "huizhou92",
 	"authorUrl": "https://medium.huizhou92.com/",
 	"fundingUrl": "https://www.buymeacoffee.com/hxzhouh",

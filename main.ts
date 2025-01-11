@@ -34,6 +34,30 @@ const englishFooter = (slug: string) => `\n---\n
 - Or follow me on [X](https://x.com/@piaopiaopig)
 -  If you have a [Medium](https://medium.huizhou92.com/) account, follow me there. My articles will be published there as soon as possible.`
 
+async function saveFileContent(file: TFile, content: string) {
+	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+	if (!activeView) {
+		new Notice('No active markdown view');
+		return;
+	}
+	activeView.editor.setValue(content);
+}
+
+async function getActiveFileContent() {
+	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+	if (!activeView) {
+		new Notice('No active markdown view');
+		return null;
+	}
+	return activeView.editor.getValue();
+}
+
+async function updateFrontmatter(content: string, frontmatter: any) {
+	const yamlRegex = /^---\n([\s\S]*?)\n---/;
+	const newFrontmatter = `---\n${stringifyYaml(frontmatter)}---`;
+	return content.replace(yamlRegex, newFrontmatter);
+}
+
 export default class SummanyPlugin extends Plugin {
 	settings: SummanyPluginSettings;
 
@@ -122,111 +146,76 @@ export default class SummanyPlugin extends Plugin {
 			.replace(/-+/g, '-'); // 将连续的短横线替换为单个短横线
 	}
 	async translateByAi() {
-		 // 获取当前活动的文件
-		 const activeFile = this.app.workspace.getActiveFile();
-		 if (!activeFile) {
-			 // 如果没有活动文件，返回
-			 return;
-		 }
-	 
-		 // 获取当前文件所在的目录路径
-		 const currentFolder = activeFile.parent?.path || "";
-		 
-		 // 生成新文件名 (例如：原文件名-translated.md)
-		 const newFileName = `${activeFile.basename}-translated.md`;
-		 const newFilePath = `${currentFolder}/${newFileName}`;
-		 const editorContent=this.readLoaclFile();
-		 console.log(editorContent);
-		 try {
-			 // 创建新文件
-			 await this.app.vault.create(
-				 newFilePath,
-				 await editorContent || "",
-			 );
-		 } catch (error) {
-			 console.error("创建文件失败:", error);
-		 }
+		const activeFile = this.app.workspace.getActiveFile();
+		if (!activeFile) return;
+
+		const currentFolder = activeFile.parent?.path || "";
+		const newFileName = `${activeFile.basename}-translated.md`;
+		const newFilePath = `${currentFolder}/${newFileName}`;
+		const editorContent = await this.readLoaclFile();
+
+		try {
+			await this.app.vault.create(newFilePath, editorContent || "");
+		} catch (error) {
+			console.error("创建文件失败:", error);
+		}
 	}
 
 	async readLoaclFile() {
-		// 获取当前活动的文件
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) {
-			return;
-		}
-	
-		// 从编辑器获取内容
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		const editorContent = activeView?.editor.getValue();
-		
-		  // 移除YAML frontmatter
-		  if (editorContent) {
-			  const processedContent = editorContent.replace(/^---\n([\s\S]*?)\n---\n/, '');
-			  if (processedContent){
-				const translateContent =await GenerateTranslate(this,processedContent);
-				return translateContent;
-			  }else{
-				  new Notice("没有内容");
-				  return "";
-			  }
-		  } else {
-			  new Notice("没有内容");
-			  return "";
-		  }
-	}
-    async addSummany() {
-		const activeLeaf = this.app.workspace.activeLeaf;
-		if (!activeLeaf) return;
-		const view = activeLeaf.view;
-		if (!(view instanceof MarkdownView)) return;
-	
-		const editor = view.editor;
-		const content = editor.getValue();
+		const editorContent = await getActiveFileContent.call(this);
+		if (!editorContent) return "";
 
-		let summary = '';
-		summary = await GenerateSummany(this, content);
+		const processedContent = editorContent.replace(/^---\n([\s\S]*?)\n---\n/, '');
+		if (processedContent) {
+			return await GenerateTranslate(this, processedContent);
+		} else {
+			new Notice("没有内容");
+			return "";
+		}
+	}
+
+    async addSummany() {
+		const content = await getActiveFileContent.call(this);
+		if (!content) return;
+
+		let summary = await GenerateSummany(this, content);
 		if (!summary) {
 			new Notice('No summary generated!');
 			return;
 		}
-		 // 4. 更新 frontmatter
-		 const yamlRegex = /^---\n([\s\S]*?)\n---/;
-		 const match = content.match(yamlRegex);
-		 if (match) {
-			 const parsed = parseYaml(match[1]) || {};
-			 parsed.description = summary;
-			 const newFrontmatter = `---\n${stringifyYaml(parsed)}---`;
-			 editor.setValue(content.replace(yamlRegex, newFrontmatter));
-		 } else {
-			 const newFrontmatter = `---\description: ${summary}\n---\n${content}`;
-			 editor.setValue(newFrontmatter);
-		 }
-		 new Notice('Summany Generated!');
-	}
-	async changeHeadingLevel(change: number) {
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!activeView) {
-			new Notice('No active markdown view');
-			return;
+
+		const yamlRegex = /^---\n([\s\S]*?)\n---/;
+		const match = content.match(yamlRegex);
+		if (match) {
+			const parsed = parseYaml(match[1]) || {};
+			parsed.description = summary;
+			const newContent = await updateFrontmatter(content, parsed);
+			await saveFileContent.call(this, this.app.workspace.getActiveFile(), newContent);
+		} else {
+			const newFrontmatter = `---\ndescription: ${summary}\n---\n${content}`;
+			await saveFileContent.call(this, this.app.workspace.getActiveFile(), newFrontmatter);
 		}
-		const editor = activeView.editor;
-		const content = editor.getValue();
+		new Notice('Summany Generated!');
+	}
+
+	async changeHeadingLevel(change: number) {
+		const content = await getActiveFileContent.call(this);
+		if (!content) return;
+
 		const lines = content.split('\n');
-		const updatedLines = lines.map(line => {
+		const updatedLines = lines.map((line: string) => {
 			if (line.startsWith('#')) {
-				if (change > 0 && line.startsWith('######')) {
-					return line; // 如果已经是最高级别，则不做任何改变
-				}
-				if (change < 0 && !line.startsWith('# ')) {
-					return line; // 如果已经是最低级别，则不做任何改变
-				}
-				return change > 0 ? '#' + line : line.replace(/^#/, '');
+				const headingLevel = line.match(/^#+/)?.[0]?.length ?? 0;
+				if (change > 0 && headingLevel >= 6) return line;
+				if (change < 0 && headingLevel <= 1) return line;
+				return change > 0 ? '#' + line : line.substring(1);
 			}
 			return line;
 		});
-		editor.setValue(updatedLines.join('\n'));
+		await saveFileContent.call(this, this.app.workspace.getActiveFile(), updatedLines.join('\n'));
 		new Notice('Heading levels updated!');
 	}
+
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
