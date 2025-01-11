@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS: SummanyPluginSettings = {
 };
 
 const chineseFooter = (slug: string) => `\n---\n
-- [本文长期连接](${slug})
+- [本文长期链接](${slug})
 - 如果您觉得我的博客对你有帮助，请通过 [RSS](https://huizhou92.com/index.xml)订阅我。
 - 或者在[X](https://x.com/@piaopiaopig)上关注我。
 - 如果您有[Medium](https://medium.huizhou92.com/)账号，能给我个关注嘛？我的文章第一时间都会发布在Medium。`;
