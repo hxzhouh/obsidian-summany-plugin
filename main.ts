@@ -1,7 +1,8 @@
 import { MarkdownView, MetadataCache, Notice, Plugin, PluginSettingTab, Setting, TFile, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
 import { SummanySettingTab } from './src/SettingTab';
-import { GenerateSummany } from './src/generate';
-import { GenerateTranslate } from './src/generate';
+import { GenerateSummany } from './src/summany';
+import { GenerateTranslate } from './src/summany';
+import { publishPost } from './src/ghost_publish';
 // Remember to rename these classes and interfaces!
 
 interface SummanyPluginSettings {
@@ -11,6 +12,8 @@ interface SummanyPluginSettings {
 	model:string[];
 	customPrompt: string;
 	geminiApiKey: string;
+	ghostUrl: string;
+	ghostApiKey: string;
 }
 
 const DEFAULT_SETTINGS: SummanyPluginSettings = {
@@ -20,6 +23,8 @@ const DEFAULT_SETTINGS: SummanyPluginSettings = {
 	model: [],
 	customPrompt: 'Please summarize the following article into a paragraph of no more than 150 words, highlighting the main points and making it concise and easy to understand.',
 	geminiApiKey: '',
+	ghostUrl: '',
+	ghostApiKey: '',
 };
 
 const chineseFooter = (slug: string) => `\n---\n
@@ -131,9 +136,19 @@ export default class SummanyPlugin extends Plugin {
 				name: 'Decrease Heading Level',
 				callback: () => this.changeHeadingLevel(-1),
 			});
+			this.addCommand({
+				id: 'publish to ghost',
+				name: 'Publish to Ghost',
+				callback: () => {
+					const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+					if (!activeView) {
+						new Notice('No active markdown view');
+						return;
+					}
+					publishPost(this, activeView);
+				}
+			});
     }
-	
-
     onunload() {
         // Any cleanup logic when the plugin is disabled
     }
@@ -146,12 +161,17 @@ export default class SummanyPlugin extends Plugin {
 			.replace(/-+/g, '-'); // 将连续的短横线替换为单个短横线
 	}
 	async translateByAi() {
+		// 将当前文件重命名为 ${activeFile.basename}.zh-cn.md
+
 		const activeFile = this.app.workspace.getActiveFile();
 		if (!activeFile) return;
+		const fileBaseName: string = activeFile.basename;
+		const newFileName = `${activeFile.basename}.zh-cn.md`;
+		this.app.fileManager.renameFile(activeFile, newFileName)
 
 		const currentFolder = activeFile.parent?.path || "";
-		const newFileName = `${activeFile.basename}-translated.md`;
-		const newFilePath = `${currentFolder}/${newFileName}`;
+		// const newFileName = `${activeFile.basename}-translated.md`;
+		const newFilePath = `${currentFolder}/${fileBaseName}`;
 		const editorContent = await this.readLoaclFile();
 
 		try {
@@ -183,16 +203,24 @@ export default class SummanyPlugin extends Plugin {
 			new Notice('No summary generated!');
 			return;
 		}
+		interface Summary {
+			description: string;
+			social: string;
+		}
 
+		const obj = JSON.parse(summary) as Summary;	
 		const yamlRegex = /^---\n([\s\S]*?)\n---/;
 		const match = content.match(yamlRegex);
 		if (match) {
 			const parsed = parseYaml(match[1]) || {};
-			parsed.description = summary;
+			
+			parsed.description = obj.description;
+			parsed.social = obj.social;
 			const newContent = await updateFrontmatter(content, parsed);
 			await saveFileContent.call(this, this.app.workspace.getActiveFile(), newContent);
 		} else {
-			const newFrontmatter = `---\ndescription: ${summary}\n---\n${content}`;
+			const newFrontmatter = `---\ndescription: ${obj.description}\nsocial:${obj.social}\n ---\n${content}`;
+			
 			await saveFileContent.call(this, this.app.workspace.getActiveFile(), newFrontmatter);
 		}
 		new Notice('Summany Generated!');

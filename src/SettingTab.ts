@@ -108,7 +108,33 @@ export class SummanySettingTab extends PluginSettingTab {
                         await checkOpenAIConfig(this.plugin); // 触发检查
                     })
             );
-    }
+            new Setting(containerEl)
+			.setName("Site URL")
+			.setDesc(
+				"The URL of your Ghost site. Make sure to include https:// at the beginning"
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("https://ghost.org")
+					.setValue(this.plugin.settings.ghostUrl)
+					.onChange(async (value) => {
+						this.plugin.settings.ghostUrl = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
+		new Setting(containerEl)
+			.setName("Access Token")
+			.setDesc("Your Staff Access Token or Admin API Key:")
+			.addText((text) =>
+				text
+					.setPlaceholder("6251555c94ca6")
+					.setValue(this.plugin.settings.ghostApiKey)
+					.onChange(async (value) => {
+						this.plugin.settings.ghostApiKey = value;
+						await this.plugin.saveSettings();
+					})
+			);
+    }
 }
 export {};
