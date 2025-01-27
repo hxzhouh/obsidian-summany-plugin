@@ -4,7 +4,7 @@ import { App,
     sanitizeHTMLToDom 
 } from 'obsidian';
 import SummanyPlugin from '../main';
-import { checkOpenAIConfig } from '../OpenAi';  
+import { checkOpenAIConfig } from './OpenAi';  
 import { checkGeminiConfigBySdk } from './gemini'; 
 export class SummanySettingTab extends PluginSettingTab {
     plugin: SummanyPlugin;
