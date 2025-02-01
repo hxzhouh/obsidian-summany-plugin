@@ -4,5 +4,11 @@ this is a obsidian pligin
 
 
 main.ts 主文件
-settingtab.ts 设置页面  用于设置插件的一些参数
-**
+├── src
+│   ├── OpenAi.ts  OpenAi support 
+│   ├── SettingTab.ts 设置页面  用于设置插件的一些参数
+│   ├── gemini.ts geminisupport 
+│   ├── ghost_publish.ts  ghost_pushlish.ts
+│   ├── llm_support 
+│   └── summany.ts 
+

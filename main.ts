@@ -1,12 +1,14 @@
 import { MarkdownView, MetadataCache, Notice, Plugin, PluginSettingTab, Setting, TFile, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
 import { SummanySettingTab } from './src/SettingTab';
-import { GenerateSummany } from './src/summany';
-import { GenerateTranslate } from './src/summany';
+import { GenerateSummany } from './src/Copilot';
+import { GenerateTranslate } from './src/Copilot';
 import { publishPost } from './src/ghost_publish';
+import { LLMFactory } from './src/llm/LLMFactory';
 // Remember to rename these classes and interfaces!
 
 interface SummanyPluginSettings {
 	devToApiKey: string;
+	llmType: string;
     baseUrl: string;
 	apiKey: string;
 	model:string[];
@@ -17,6 +19,7 @@ interface SummanyPluginSettings {
 }
 
 const DEFAULT_SETTINGS: SummanyPluginSettings = {
+	llmType: '',
 	devToApiKey: '',
     baseUrl: '',
 	apiKey: '',
@@ -26,6 +29,8 @@ const DEFAULT_SETTINGS: SummanyPluginSettings = {
 	ghostUrl: '',
 	ghostApiKey: '',
 };
+
+
 
 const chineseFooter = (slug: string) => `\n---\n
 - [本文长期链接](${slug})
@@ -47,6 +52,9 @@ async function saveFileContent(file: TFile, content: string) {
 	}
 	activeView.editor.setValue(content);
 }
+
+
+
 
 async function getActiveFileContent() {
 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -162,7 +170,6 @@ export default class SummanyPlugin extends Plugin {
 	}
 	async translateByAi() {
 		// 将当前文件重命名为 ${activeFile.basename}.zh-cn.md
-
 		const activeFile = this.app.workspace.getActiveFile();
 		if (!activeFile) return;
 		const fileBaseName: string = activeFile.basename;

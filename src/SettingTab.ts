@@ -34,6 +34,21 @@ export class SummanySettingTab extends PluginSettingTab {
               }),
           );
         new Setting(containerEl)
+          .setName('LLM Provider')
+          .setDesc('Select which LLM provider to use')
+          .addDropdown(dropdown => dropdown
+            .addOptions({
+              'openai': 'OpenAI',
+              'gemini': 'Google Gemini',
+              "deepSeek": "DeepSeek",
+            })
+            .setValue(this.plugin.settings.llmType)
+            .onChange(async (value: string) => {
+              this.plugin.settings.llmType = value;
+              await this.plugin.saveSettings();
+            })
+          );
+        new Setting(containerEl)
             .setName('Gemini API Key')
             .setDesc('')
             .addText(text =>

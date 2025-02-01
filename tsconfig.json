@@ -20,5 +20,5 @@
   },
   "include": [
     "**/*.ts"
-, "src/gemini.ts", "src/summany.ts"  ]
+, "src/gemini.ts", "src/Copilot.tss"  ]
 }

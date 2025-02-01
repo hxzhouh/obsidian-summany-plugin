@@ -1,5 +1,6 @@
 import SummanyPlugin from "main";
 import { Notice, requestUrl } from "obsidian";
+import { LLMFactory } from "./llm/LLMFactory";
 
 const translatePrompt = `You are a professional English translator...`;
 
@@ -46,8 +47,13 @@ async function callOpenAI(plugin: SummanyPlugin, request: OpenAIRequest): Promis
         return '';
     }
 }
-
 export async function GenerateTranslate(plugin: SummanyPlugin, content: string) {
+    const llm = LLMFactory.createLLM(plugin.settings.llmType, {
+        apiKey: plugin.settings.llmType === 'openai' ? plugin.settings.openaiApiKey : plugin.settings.geminiApiKey,
+        baseUrl: plugin.settings.openaiBaseUrl,
+        model: plugin.settings.openaiModel
+      });
+
     return await callOpenAI(plugin, {
         prompt: translatePrompt,
         content: content
