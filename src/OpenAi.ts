@@ -1,8 +1,8 @@
 import { Notice, requestUrl } from "obsidian";
 import SummanyPlugin from '../main';
 export async function checkOpenAIConfig(plugin: SummanyPlugin) {
-    const { baseUrl, apiKey } = plugin.settings;
-    if (!apiKey) {
+    const { baseUrl, opanAiApiKey } = plugin.settings;
+    if (!opanAiApiKey) {
         new Notice('OpenAi API Key is not set!');
         return;
     }
@@ -16,7 +16,7 @@ export async function checkOpenAIConfig(plugin: SummanyPlugin) {
             url: finalUrl,
             method: 'GET',
             headers: {
-                Authorization: `Bearer ${apiKey}`
+                Authorization: `Bearer ${opanAiApiKey}`
             }
         });
         if (result.status === 200) {

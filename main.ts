@@ -1,8 +1,6 @@
-import { MarkdownView, MetadataCache, Notice, Plugin, PluginSettingTab, Setting, TFile, parseYaml, requestUrl, stringifyYaml } from 'obsidian';
+import { MarkdownView, Notice, Plugin, TFile, parseYaml, stringifyYaml } from 'obsidian';
 import { SummanySettingTab } from './src/SettingTab';
-import { GenerateSummany } from './src/Copilot';
-import { GenerateTranslate } from './src/Copilot';
-import { publishPost } from './src/ghost_publish';
+import { GenerateSummany, GetLlmConfigByType,GenerateTranslate, Copilot } from './src/Copilot';
 import { LLMFactory } from './src/llm/LLMFactory';
 // Remember to rename these classes and interfaces!
 
@@ -10,28 +8,31 @@ interface SummanyPluginSettings {
 	devToApiKey: string;
 	llmType: string;
     baseUrl: string;
-	apiKey: string;
-	model:string[];
+	opanAiApiKey: string;
+	openAiModel:string[];
 	customPrompt: string;
 	geminiApiKey: string;
 	ghostUrl: string;
 	ghostApiKey: string;
+	deepSeekApiKey: string;
+	deepSeekApiUrl: string;
+	deepSeekModel: string[];
 }
 
 const DEFAULT_SETTINGS: SummanyPluginSettings = {
-	llmType: '',
+	llmType: 'openai',
 	devToApiKey: '',
     baseUrl: '',
-	apiKey: '',
-	model: [],
+	opanAiApiKey: '',
+	openAiModel: ['gpt-4o-mini'],
 	customPrompt: 'Please summarize the following article into a paragraph of no more than 150 words, highlighting the main points and making it concise and easy to understand.',
 	geminiApiKey: '',
 	ghostUrl: '',
 	ghostApiKey: '',
+	deepSeekApiKey: '',
+	deepSeekApiUrl: '',
+	deepSeekModel: [],
 };
-
-
-
 const chineseFooter = (slug: string) => `\n---\n
 - [本文长期链接](${slug})
 - 如果您觉得我的博客对你有帮助，请通过 [RSS](https://huizhou92.com/index.xml)订阅我。
@@ -42,7 +43,7 @@ const englishFooter = (slug: string) => `\n---\n
 - [Long Time Link](${slug})
 - If you find my blog helpful, please subscribe to me via [RSS](https://huizhou92.com/index.xml)
 - Or follow me on [X](https://x.com/@piaopiaopig)
--  If you have a [Medium](https://medium.huizhou92.com/) account, follow me there. My articles will be published there as soon as possible.`
+- If you have a [Medium](https://medium.huizhou92.com/) account, follow me there. My articles will be published there as soon as possible.`
 
 async function saveFileContent(file: TFile, content: string) {
 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -52,9 +53,6 @@ async function saveFileContent(file: TFile, content: string) {
 	}
 	activeView.editor.setValue(content);
 }
-
-
-
 
 async function getActiveFileContent() {
 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -73,9 +71,13 @@ async function updateFrontmatter(content: string, frontmatter: any) {
 
 export default class SummanyPlugin extends Plugin {
 	settings: SummanyPluginSettings;
+	async onload() {
 
-    async onload() {
 		await this.loadSettings();
+
+		const llmProvider = LLMFactory.createLLM(this.settings.llmType, GetLlmConfigByType(this));
+		const copilot = new Copilot(llmProvider);
+
 		this.addSettingTab(new SummanySettingTab(this.app, this));
         this.addCommand({
             id: 'summary by openai',
@@ -88,22 +90,54 @@ export default class SummanyPlugin extends Plugin {
 			callback: () => this.translateByAi(),
 		})
 		this.addCommand({
+			id: 'rewrite by Ai',
+			name: 'rewrite by Ai',
+			callback: async () => {
+				let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!activeView) {
+					new Notice('No active markdown view');
+					return;
+				}
+				if (!activeView.file) {
+					new Notice('No active file');
+					console.log('No active file');
+					return;
+				}
+				let isZhCN = activeView.file.path.includes('zh-cn');
+				const content = activeView.editor.getValue();
+				let result : string
+				let fileName : string	
+				const currentFolder = activeView.file!.parent?.path || "";
+				if(isZhCN) {
+					fileName = `${currentFolder}/${activeView.file!.basename.replace('zh-cn','')}.md`;
+					result = await copilot.GenerateRewrite(content,{ 
+						language: 'US English',
+						tone: 'formal'});
+				}else{
+					fileName = `${currentFolder}/${activeView.file!.basename}.zh-cn.md`;
+					result = await copilot.GenerateRewrite(content,{ 
+						language: 'Chinese',
+						tone: 'formal'});
+				}
+				await this.createNewFile(fileName, result);
+			},
+		})
+		this.addCommand({
 			id: 'generate-slug',
 			name: 'Generate Slug',
 			callback: async () => {
-		
-			  const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-			  if (!activeView) {
-				new Notice('No active markdown view');
-				return;
-			  }
-			  if (!activeView.file) {
-				new Notice('No active file');
-				return;
-			  }
+				let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!activeView) {
+					new Notice('No active markdown view');
+					return;
+				}
+				if (!activeView.file) {
+					new Notice('No active file');
+					console.log('No active file');
+					return;
+				}
+				let isZhCN = activeView.file.path.includes('zh-cn');
 			  //在这里判断文件名是否包含 zh-cn
-			  const isZhCN = activeView.file.path.includes('zh-cn');
-
 			  const metadataCache = this.app.metadataCache.getFileCache(activeView.file);
 	
 			  const title = metadataCache?.frontmatter?.["title"]
@@ -144,29 +178,24 @@ export default class SummanyPlugin extends Plugin {
 				name: 'Decrease Heading Level',
 				callback: () => this.changeHeadingLevel(-1),
 			});
-			this.addCommand({
-				id: 'publish to ghost',
-				name: 'Publish to Ghost',
-				callback: () => {
-					const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-					if (!activeView) {
-						new Notice('No active markdown view');
-						return;
-					}
-					publishPost(this, activeView);
-				}
-			});
     }
     onunload() {
         // Any cleanup logic when the plugin is disabled
     }
-
+	
 	async generateSlug(title: string) {
 		return title
 			.toLowerCase() // 将字符串转换为小写
 			.replace(/[\s]+/g, '-') // 将空格替换为短横线
 			.replace(/[^\w\u4e00-\u9fa5\-]/g, '') // 移除特殊字符，保留字母、数字、汉字和短横线
 			.replace(/-+/g, '-'); // 将连续的短横线替换为单个短横线
+	}
+	async createNewFile(name: string,content:string) {
+		try {
+			await this.app.vault.create(name, content || "");
+		} catch (error) {
+			console.error("创建文件失败:", error);
+		}
 	}
 	async translateByAi() {
 		// 将当前文件重命名为 ${activeFile.basename}.zh-cn.md
@@ -180,19 +209,19 @@ export default class SummanyPlugin extends Plugin {
 		// const newFileName = `${activeFile.basename}-translated.md`;
 		const newFilePath = `${currentFolder}/${fileBaseName}`;
 		const editorContent = await this.readLoaclFile();
-
-		try {
-			await this.app.vault.create(newFilePath, editorContent || "");
-		} catch (error) {
-			console.error("创建文件失败:", error);
-		}
+		await this.createNewFile(newFilePath, editorContent);
 	}
 
-	async readLoaclFile() {
+	async getFileContent() : Promise<string> {
 		const editorContent = await getActiveFileContent.call(this);
 		if (!editorContent) return "";
 
 		const processedContent = editorContent.replace(/^---\n([\s\S]*?)\n---\n/, '');
+		return processedContent;
+	}
+
+	async readLoaclFile() {
+		const processedContent = await this.getFileContent();
 		if (processedContent) {
 			return await GenerateTranslate(this, processedContent);
 		} else {
@@ -220,7 +249,6 @@ export default class SummanyPlugin extends Plugin {
 		const match = content.match(yamlRegex);
 		if (match) {
 			const parsed = parseYaml(match[1]) || {};
-			
 			parsed.description = obj.description;
 			parsed.social = obj.social;
 			const newContent = await updateFrontmatter(content, parsed);

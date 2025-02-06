@@ -14,7 +14,7 @@ export class DeepSeekProvider implements LLMProvider {
         'Authorization': `Bearer ${this.config.apiKey}`
       },
       body: JSON.stringify({
-        model: this.config.model || 'gpt-4',
+        model: this.config.model || 'deepseek-reasoner',
         messages: [
           { role: 'system', content: prompt },
           { role: 'user', content: content }

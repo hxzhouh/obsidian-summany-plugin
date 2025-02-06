@@ -82,9 +82,9 @@ export class SummanySettingTab extends PluginSettingTab {
             .addText(text => 
                 text
                     .setPlaceholder('sk-xxxxxxxxxxxxxxxxxxxxxxxx')
-                    .setValue(this.plugin.settings.apiKey)
+                    .setValue(this.plugin.settings.opanAiApiKey)
                     .onChange(async (value) => {
-                        this.plugin.settings.apiKey = value;
+                        this.plugin.settings.opanAiApiKey = value;
                         await this.plugin.saveSettings();
                     })
             );
@@ -94,9 +94,9 @@ export class SummanySettingTab extends PluginSettingTab {
             .addTextArea(text => 
             text
                 .setPlaceholder('model1,model2,model3')
-                .setValue(this.plugin.settings.model.join(','))
+                .setValue(this.plugin.settings.openAiModel.join(','))
                 .onChange(async (value) => {
-                this.plugin.settings.model = value.split(',').map(model => model.trim());
+                this.plugin.settings.openAiModel = value.split(',').map(model => model.trim());
                 await this.plugin.saveSettings();
                 })
             );
@@ -150,6 +150,24 @@ export class SummanySettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+        new Setting(containerEl).setHeading().setName('DeepSeek').setDesc('')
+        .addText(text => 
+            text
+            .setPlaceholder('DeepSeek API Key')
+            .setValue(this.plugin.settings.deepSeekApiKey)
+            .onChange(async (value) => {
+            this.plugin.settings.deepSeekApiKey = value}))
+        .addText(text => text.setPlaceholder('DeepSeek API URL').
+            setValue(this.plugin.settings.deepSeekApiUrl).
+            onChange(async (value) => {
+                this.plugin.settings.deepSeekApiUrl = value}
+            )
+        ).addTextArea(text => text.setPlaceholder('model1,model2,model3').
+        setValue(this.plugin.settings.deepSeekModel.join(',')).
+        onChange(async (value) => {
+            this.plugin.settings.deepSeekModel = value.split(',').map(model => model.trim())
+        }
+    ));
     }
 }
 export {};
