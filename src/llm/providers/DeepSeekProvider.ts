@@ -1,4 +1,4 @@
-import { LLMProvider, LLMConfig, LLMResponse } from '../LLMInterface';
+import { LLMProvider, LLMConfig, LLMResponse } from '../LLMFactory';
 import { requestUrl } from 'obsidian';
 
 export class DeepSeekProvider implements LLMProvider {

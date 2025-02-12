@@ -1,4 +1,3 @@
-import { LLMProvider, LLMConfig } from './LLMInterface';
 import { OpenAIProvider } from './providers/OpenAIProvider';
 import { GeminiProvider } from './providers/GeminiProvider';
 import { DeepSeekProvider } from './providers/DeepSeekProvider';
@@ -16,4 +15,20 @@ export class LLMFactory {
         throw new Error(`Unknown LLM type: ${type}`);
     }
   }
+}
+
+export interface LLMResponse {
+  content: string;
+  status: number;
+}
+
+export interface LLMConfig {
+  apiKey: string;
+  baseUrl?: string;
+  model?: string;
+}
+
+export interface LLMProvider {
+  generateContent(prompt: string, content: string): Promise<LLMResponse>;
+  checkConfig(): Promise<boolean>;
 }

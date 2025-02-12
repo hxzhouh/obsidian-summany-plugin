@@ -1,4 +1,4 @@
-import { LLMProvider, LLMConfig, LLMResponse } from '../LLMInterface';
+import { LLMProvider, LLMConfig, LLMResponse } from '../LLMFactory';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export class GeminiProvider implements LLMProvider {

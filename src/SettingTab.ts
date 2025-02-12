@@ -1,11 +1,11 @@
 import { App,  
+    Notice,  
     PluginSettingTab,  
     Setting,
     sanitizeHTMLToDom 
 } from 'obsidian';
 import SummanyPlugin from '../main';
-import { checkOpenAIConfig } from './OpenAi';  
-import { checkGeminiConfigBySdk } from './gemini'; 
+import { CheckConfig } from './Copilot';
 export class SummanySettingTab extends PluginSettingTab {
     plugin: SummanyPlugin;
 
@@ -17,6 +17,7 @@ export class SummanySettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
+        containerEl.createEl('h2', { text: 'Dev.to config' });
         new Setting(containerEl)
         .setName('DEV Community API Keys.(https://dev.to/settings/extensions)')
         .setDesc(
@@ -32,38 +33,33 @@ export class SummanySettingTab extends PluginSettingTab {
                 this.plugin.settings.devToApiKey = value;
                 await this.plugin.saveSettings();
               }),
-          );
+          );        
         new Setting(containerEl)
-          .setName('LLM Provider')
-          .setDesc('Select which LLM provider to use')
-          .addDropdown(dropdown => dropdown
-            .addOptions({
-              'openai': 'OpenAI',
-              'gemini': 'Google Gemini',
-              "deepSeek": "DeepSeek",
-            })
-            .setValue(this.plugin.settings.llmType)
-            .onChange(async (value: string) => {
-              this.plugin.settings.llmType = value;
-              await this.plugin.saveSettings();
-            })
-          );
-        new Setting(containerEl)
-            .setName('Gemini API Key')
-            .setDesc('')
-            .addText(text =>
-                text.setPlaceholder('Gemini API Key') .setPlaceholder('https://aistudio.google.com/app/apikey')
-                    .setValue(this.plugin.settings.geminiApiKey).onChange(async (value) => {
-                        this.plugin.settings.geminiApiKey = value;
-                        await this.plugin.saveSettings();
-                    })
-                )
-                .addButton(button => {
-                    button.setButtonText('Check')
-                      .onClick(async () => {
-                        await checkGeminiConfigBySdk(this.plugin);
-                      });
-                  });
+        .setName('LLM Provider')
+        .setDesc('Select which LLM provider to use')
+        .addDropdown(dropdown => dropdown
+          .addOptions({
+            'openai': 'OpenAI',
+            'gemini': 'Google Gemini',
+            "deepSeek": "DeepSeek",
+          })
+          .setValue(this.plugin.settings.llmType)
+          .onChange(async (value: string) => {
+            this.plugin.settings.llmType = value;
+            await this.plugin.saveSettings();
+          })
+        ).addButton((btn) =>
+            btn.setButtonText('Check')
+                .setCta()
+                .onClick(async () => {
+                    if (await CheckConfig(this.plugin)) {// 触发检查
+                        new Notice('Success! Your configuration is valid.');
+                    }else {
+                        new Notice('Failed! Your configuration is invalid.');
+                    }
+                })
+        );
+        containerEl.createEl('h2', { text: 'OpenAi config'});
         new Setting(containerEl)
             .setName('Base URL(Optional)')
             .setDesc('For 3rd party OpenAI Format endpoints only. Leave blank for other providers')
@@ -112,62 +108,58 @@ export class SummanySettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     })
                 );
+        containerEl.createEl('h2', { text: 'Google Gemini config' });
         new Setting(containerEl)
-            .setName('Check')
-            .setDesc('Click to validate your API key and base URL by sending a request.')
-            .addButton((btn) =>
-                btn
-                    .setButtonText('Check')
-                    .setCta()
-                    .onClick(async () => {
-                        await checkOpenAIConfig(this.plugin); // 触发检查
-                    })
-            );
-            new Setting(containerEl)
-			.setName("Site URL")
-			.setDesc(
-				"The URL of your Ghost site. Make sure to include https:// at the beginning"
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("https://ghost.org")
-					.setValue(this.plugin.settings.ghostUrl)
-					.onChange(async (value) => {
-						this.plugin.settings.ghostUrl = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName("Access Token")
-			.setDesc("Your Staff Access Token or Admin API Key:")
-			.addText((text) =>
-				text
-					.setPlaceholder("6251555c94ca6")
-					.setValue(this.plugin.settings.ghostApiKey)
-					.onChange(async (value) => {
-						this.plugin.settings.ghostApiKey = value;
-						await this.plugin.saveSettings();
-					})
-			);
-        new Setting(containerEl).setHeading().setName('DeepSeek').setDesc('')
+        .setName('Gemini API Key')
+        .setDesc('')
+        .addText(text =>
+            text.setPlaceholder('https://aistudio.google.com/app/apikey')
+                .setValue(this.plugin.settings.geminiApiKey).onChange(async (value) => {
+                    this.plugin.settings.geminiApiKey = value;
+                    await this.plugin.saveSettings();
+                })
+        )
+        new Setting(containerEl).setName('Gemini URL').setDesc('Gemini API URL')
+        .addText(text => 
+            text
+            .setPlaceholder('https://generativelanguage.googleapis.com')
+            .setValue(this.plugin.settings.geminiApiUrl)
+            .onChange(async (value) => {
+            this.plugin.settings.geminiApiUrl = value})
+        );
+        new Setting(containerEl).setName('Models').setDesc('Comma-separated list of models')
+        .addTextArea(text => 
+            text
+            .setPlaceholder('model1,model2,model3')
+            .setValue(this.plugin.settings.geminiModel.join(','))
+            .onChange(async (value) => {
+            this.plugin.settings.geminiModel = value.split(',').map(model => model.trim())
+        }));
+        containerEl.createEl('h2', { text: 'DeepSeek config' });
+        new Setting(containerEl).setName('DeepSeek').setDesc('DeepSeek API Key')
         .addText(text => 
             text
             .setPlaceholder('DeepSeek API Key')
             .setValue(this.plugin.settings.deepSeekApiKey)
             .onChange(async (value) => {
-            this.plugin.settings.deepSeekApiKey = value}))
-        .addText(text => text.setPlaceholder('DeepSeek API URL').
-            setValue(this.plugin.settings.deepSeekApiUrl).
-            onChange(async (value) => {
-                this.plugin.settings.deepSeekApiUrl = value}
-            )
-        ).addTextArea(text => text.setPlaceholder('model1,model2,model3').
-        setValue(this.plugin.settings.deepSeekModel.join(',')).
-        onChange(async (value) => {
+            this.plugin.settings.deepSeekApiKey = value})
+        );
+        new Setting(containerEl).setName('DeepSeek URL').setDesc('DeepSeek API URL')
+        .addText(text => 
+            text
+            .setPlaceholder('DeepSeek URL')
+            .setValue(this.plugin.settings.deepSeekApiUrl)
+            .onChange(async (value) => {
+            this.plugin.settings.deepSeekApiUrl = value})
+        );
+        new Setting(containerEl).setName('Models').setDesc('Comma-separated list of models')
+        .addTextArea(text => 
+            text
+            .setPlaceholder('model1,model2,model3')
+            .setValue(this.plugin.settings.deepSeekModel.join(','))
+            .onChange(async (value) => {
             this.plugin.settings.deepSeekModel = value.split(',').map(model => model.trim())
-        }
-    ));
+        }));
     }
 }
 export {};

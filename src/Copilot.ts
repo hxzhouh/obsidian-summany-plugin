@@ -1,7 +1,7 @@
 import SummanyPlugin from "main";
-import { Notice, requestUrl } from "obsidian";
+import { Notice, Plugin, requestUrl } from "obsidian";
 import { LLMFactory } from "./llm/LLMFactory";
-import { LLMProvider, LLMConfig } from './llm/LLMInterface';
+import { LLMProvider, LLMConfig } from './llm/LLMFactory';
 const translatePrompt = `You are a professional English translator...`;
 
 
@@ -29,7 +29,7 @@ const createRewritePrompt = (template: Partial<PromptTemplate> = {}): string => 
     - Structure and formatting: Maintain the logical structure of the original text and ensure that the transcribed text is well organized.
     - SEO Optimization: Consider SEO factors during the transcription process and use appropriate keywords and phrases.
     - Copyright and citation: Respect the copyright of the original article by citing the source and original author.
-
+    - Do not process the code snippet, keep it as it is.    
     Output the following
     ### "Title":"Title is a SEO friendly Title. ",
     ### "Subtitle":"Subtitle is a short description of the article.",
@@ -68,19 +68,65 @@ export class Copilot {
             throw error;
         }
     }
+    async CheckConfig(): Promise<boolean> {
+        return await this.llmProvider.checkConfig();
+    }
 }
 
-export async function GenerateSummany(plugin: SummanyPlugin, content: string) {
+
+function cleanJSONString(jsonString:string): string {
+    const Marker = "```";
+    const lines = jsonString.split('\n'); // 将字符串分割成行
+    if (lines.length > 0) {
+        const firstLine = lines[0];
+        if (firstLine.includes(Marker)) {
+            lines.shift();
+        }
+    }
+    if (lines.length > 0) {
+        const lastLine = lines[lines.length - 1];
+        if (lastLine.includes(Marker)) {
+            lines.pop();
+        }
+    }
+    return lines.join('\n').trim();
+  }
+
+const createSummaryPrompt= (language:string): string => {    
+    return `Use ${language} Answer the question
+    Returns json data in the following strict format
+    {
+        "description":"",
+        "social":""
+    }
+    description: summarizes the key points of this article, requires SEO optimization, pays attention to long-tail keywords, and at the same time attracts people's curiosity.
+    
+    social: summarizes the main points of this article in sentences of no more than 140 characters, Mainly used for publishing on x, attracting people's curiosity at the same time.
+    `;
+};
+
+export default async function GenerateSummary(plugin: SummanyPlugin, language:string,content: string) {
 
     const llm = LLMFactory.createLLM(plugin.settings.llmType, GetLlmConfigByType(plugin));
     if (!llm) {
         new Notice('LLM provider not found!');
         return '';
     }
-    const response = await llm.generateContent(plugin.settings.customPrompt + " \n check the input content's language, return the same language.only return the summary.\n The content is: \n ", content);
-    return response.content;
+    const response = await llm.generateContent(createSummaryPrompt(language), content);
+
+    console.log(response.content);
+    return cleanJSONString(response.content);
 }
 
+export  async function CheckConfig(plugin: SummanyPlugin): Promise<boolean> {
+    const llm = LLMFactory.createLLM(plugin.settings.llmType, GetLlmConfigByType(plugin));
+    if (!llm) {
+        new Notice('LLM provider not found!');
+        return false;
+    }
+    return await llm.checkConfig();
+
+}
 export function GetLlmConfigByType(plugin: SummanyPlugin): LLMConfig {
     switch (plugin.settings.llmType) {
         case 'openai':
@@ -91,9 +137,9 @@ export function GetLlmConfigByType(plugin: SummanyPlugin): LLMConfig {
             };
         case 'gemini':
             return {
-                apiKey: '',
-                baseUrl: '',
-                model: '',
+                apiKey: plugin.settings.geminiApiKey,
+                baseUrl: plugin.settings.geminiApiUrl,
+                model: plugin.settings.geminiModel[0],
             };
         case 'deepseek':
             return {

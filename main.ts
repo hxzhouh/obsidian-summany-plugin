@@ -1,49 +1,11 @@
 import { MarkdownView, Notice, Plugin, TFile, parseYaml, stringifyYaml } from 'obsidian';
 import { SummanySettingTab } from './src/SettingTab';
-import { GenerateSummany, GetLlmConfigByType,GenerateTranslate, Copilot } from './src/Copilot';
+import GenerateSummary, { GetLlmConfigByType,GenerateTranslate, Copilot } from './src/Copilot';
 import { LLMFactory } from './src/llm/LLMFactory';
+import { SummanyPluginSettings,DEFAULT_SETTINGS,chineseFooter,englishFooter } from 'src/config';
+import { FileUtils } from './src/utils/FileUtils';
+
 // Remember to rename these classes and interfaces!
-
-interface SummanyPluginSettings {
-	devToApiKey: string;
-	llmType: string;
-    baseUrl: string;
-	opanAiApiKey: string;
-	openAiModel:string[];
-	customPrompt: string;
-	geminiApiKey: string;
-	ghostUrl: string;
-	ghostApiKey: string;
-	deepSeekApiKey: string;
-	deepSeekApiUrl: string;
-	deepSeekModel: string[];
-}
-
-const DEFAULT_SETTINGS: SummanyPluginSettings = {
-	llmType: 'openai',
-	devToApiKey: '',
-    baseUrl: '',
-	opanAiApiKey: '',
-	openAiModel: ['gpt-4o-mini'],
-	customPrompt: 'Please summarize the following article into a paragraph of no more than 150 words, highlighting the main points and making it concise and easy to understand.',
-	geminiApiKey: '',
-	ghostUrl: '',
-	ghostApiKey: '',
-	deepSeekApiKey: '',
-	deepSeekApiUrl: '',
-	deepSeekModel: [],
-};
-const chineseFooter = (slug: string) => `\n---\n
-- [本文长期链接](${slug})
-- 如果您觉得我的博客对你有帮助，请通过 [RSS](https://huizhou92.com/index.xml)订阅我。
-- 或者在[X](https://x.com/@piaopiaopig)上关注我。
-- 如果您有[Medium](https://medium.huizhou92.com/)账号，能给我个关注嘛？我的文章第一时间都会发布在Medium。`;
-
-const englishFooter = (slug: string) => `\n---\n
-- [Long Time Link](${slug})
-- If you find my blog helpful, please subscribe to me via [RSS](https://huizhou92.com/index.xml)
-- Or follow me on [X](https://x.com/@piaopiaopig)
-- If you have a [Medium](https://medium.huizhou92.com/) account, follow me there. My articles will be published there as soon as possible.`
 
 async function saveFileContent(file: TFile, content: string) {
 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -71,6 +33,8 @@ async function updateFrontmatter(content: string, frontmatter: any) {
 
 export default class SummanyPlugin extends Plugin {
 	settings: SummanyPluginSettings;
+	private fileUtils: FileUtils;
+
 	async onload() {
 
 		await this.loadSettings();
@@ -79,6 +43,9 @@ export default class SummanyPlugin extends Plugin {
 		const copilot = new Copilot(llmProvider);
 
 		this.addSettingTab(new SummanySettingTab(this.app, this));
+
+		this.fileUtils = new FileUtils(this.app);
+
         this.addCommand({
             id: 'summary by openai',
             name: 'Generate Summary',
@@ -231,34 +198,41 @@ export default class SummanyPlugin extends Plugin {
 	}
 
     async addSummany() {
-		const content = await getActiveFileContent.call(this);
-		if (!content) return;
+		console.log('call addSummany');
+		await this.fileUtils.withActiveFile(async ({view, isZhCN}) => {
+			const content = view.editor.getValue();
+			if (!content) return;
+			let summary = await GenerateSummary(
+				this, 
+				isZhCN ? 'Chinese' : 'American English',
+				content
+			);
+			if (!summary) {
+				new Notice('No summary generated!');
+				return;
+			}
+			console.log('summary:', summary);
+			interface Summary {
+				description: string;
+				social: string;
+			}
 
-		let summary = await GenerateSummany(this, content);
-		if (!summary) {
-			new Notice('No summary generated!');
-			return;
-		}
-		interface Summary {
-			description: string;
-			social: string;
-		}
-
-		const obj = JSON.parse(summary) as Summary;	
-		const yamlRegex = /^---\n([\s\S]*?)\n---/;
-		const match = content.match(yamlRegex);
-		if (match) {
-			const parsed = parseYaml(match[1]) || {};
-			parsed.description = obj.description;
-			parsed.social = obj.social;
-			const newContent = await updateFrontmatter(content, parsed);
-			await saveFileContent.call(this, this.app.workspace.getActiveFile(), newContent);
-		} else {
-			const newFrontmatter = `---\ndescription: ${obj.description}\nsocial:${obj.social}\n ---\n${content}`;
-			
-			await saveFileContent.call(this, this.app.workspace.getActiveFile(), newFrontmatter);
-		}
-		new Notice('Summany Generated!');
+			const obj = JSON.parse(summary) as Summary;	
+			const yamlRegex = /^---\n([\s\S]*?)\n---/;
+			const match = content.match(yamlRegex);
+			if (match) {
+				const parsed = parseYaml(match[1]) || {};
+				parsed.description = obj.description;
+				parsed.social = obj.social;
+				const newContent = await updateFrontmatter(content, parsed);
+				await saveFileContent.call(this, this.app.workspace.getActiveFile(), newContent);
+			} else {
+				const newFrontmatter = `---\ndescription: ${obj.description}\nsocial:${obj.social}\n ---\n${content}`;
+				
+				await saveFileContent.call(this, this.app.workspace.getActiveFile(), newFrontmatter);
+			}
+			new Notice('Summany Generated!');
+		});
 	}
 
 	async changeHeadingLevel(change: number) {
