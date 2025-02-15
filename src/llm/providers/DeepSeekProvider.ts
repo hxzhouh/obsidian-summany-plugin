@@ -6,6 +6,8 @@ export class DeepSeekProvider implements LLMProvider {
 
   async generateContent(prompt: string, content: string): Promise<LLMResponse> {
     const url = (this.config.baseUrl || 'https://api.deepseek.com') + '/v1/chat/completions';
+    console.log("Generating content by DeepSeekProvider");
+    console.log("url: ", url,"token: ",this.config.apiKey);
     const response = await requestUrl({
       url,
       method: 'POST',

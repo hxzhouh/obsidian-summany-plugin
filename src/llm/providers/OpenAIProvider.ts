@@ -21,8 +21,6 @@ export class OpenAIProvider implements LLMProvider {
         ]
       })
     });
-    console.log(response);
-    console.log(this.config)
     return {
       content: response.json.choices[0].message.content,
       status: response.status

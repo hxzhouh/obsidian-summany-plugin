@@ -2,6 +2,7 @@ import SummanyPlugin from "main";
 import { Notice, Plugin, requestUrl } from "obsidian";
 import { LLMFactory } from "./llm/LLMFactory";
 import { LLMProvider, LLMConfig } from './llm/LLMFactory';
+import { json } from "stream/consumers";
 const translatePrompt = `You are a professional English translator...`;
 
 
@@ -30,11 +31,24 @@ const createRewritePrompt = (template: Partial<PromptTemplate> = {}): string => 
     - SEO Optimization: Consider SEO factors during the transcription process and use appropriate keywords and phrases.
     - Copyright and citation: Respect the copyright of the original article by citing the source and original author.
     - Do not process the code snippet, keep it as it is.    
-    Output the following
-    ### "Title":"Title is a SEO friendly Title. ",
-    ### "Subtitle":"Subtitle is a short description of the article.",
-    ### "Summany":"Summany is a summary of the article. No more than 200 characters",
-    ### "BlogContent":"BlogContent is the main content of the article."
+    The output is in the following format
+    ---
+    title: {{Title is a SEO friendly Title}}
+    subtitle: {{Subtitle is a short description of the article}}
+    description: {{ summary of the article. No more than 200 characters}}
+    date:
+    lastmod:
+    draft: true
+    tags: 
+    categories: 
+    author: huizhou92
+    slug: 
+    image: 
+    keywords: 
+    long_time_url: 
+    doing: true
+    ---
+    {{content}} 
     `;
 };
 
@@ -48,21 +62,21 @@ export async function GenerateTranslate(plugin: SummanyPlugin, content: string) 
     const response = await llm.generateContent(translatePrompt, content);
     return response.content;
 }
+
 export class Copilot {
     private llmProvider: LLMProvider;
 
     constructor(provider: LLMProvider) {
         this.llmProvider = provider;
     }
-    
     async GenerateRewrite(content: string, template?: Partial<PromptTemplate>): Promise<string>{
         const prompt = createRewritePrompt(template)
         try {      
             const response = await this.llmProvider.generateContent(prompt, content);
             if (response.status !== 200) {
                 throw new Error(`Request failed with status: ${response.status}`);
-            }
-            return response.content
+            }        
+            return response.content;
         } catch (error) {
             console.error("GenerateRewrite error:", error);
             throw error;
@@ -85,8 +99,7 @@ export class Copilot {
     }
 }
 
-
-function cleanJSONString(jsonString:string): string {
+function cleanMarkdownFormat(jsonString:string): string {
     const Marker = "```";
     const lines = jsonString.split('\n'); // 将字符串分割成行
     if (lines.length > 0) {
@@ -125,9 +138,7 @@ export default async function GenerateSummary(plugin: SummanyPlugin, language:st
         return '';
     }
     const response = await llm.generateContent(createSummaryPrompt(language), content);
-
-    console.log(response.content);
-    return cleanJSONString(response.content);
+    return cleanMarkdownFormat(response.content);
 }
 
 export  async function CheckConfig(plugin: SummanyPlugin): Promise<boolean> {

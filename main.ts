@@ -79,21 +79,23 @@ export default class SummanyPlugin extends Plugin {
 				}
 				let isZhCN = activeView.file.path.includes('zh-cn');
 				const content = activeView.editor.getValue();
-				let result : string
-				let fileName : string	
+				let result : string;
+				let fileName : string;	
 				const currentFolder = activeView.file!.parent?.path || "";
-				if(isZhCN) {
+				if (isZhCN) {
 					fileName = `${currentFolder}/${activeView.file!.basename.replace('zh-cn','')}.md`;
-					result = await copilot.GenerateRewrite(content,{ 
+					result = await copilot.GenerateRewrite(content, { 
 						language: 'US English',
-						tone: 'formal'});
-				}else{
+						tone: 'formal',
+					});
+				} else {
 					fileName = `${currentFolder}/${activeView.file!.basename}.zh-cn.md`;
-					result = await copilot.GenerateRewrite(content,{ 
+					result = await copilot.GenerateRewrite(content, {
 						language: 'Chinese',
-						tone: 'formal'});
+						tone: 'formal',
+					});
 				}
-				await this.createNewFile(fileName, result);
+				await this.createNewFile(fileName,result);
 			},
 		})
 		this.addCommand({
@@ -166,9 +168,10 @@ export default class SummanyPlugin extends Plugin {
 	}
 	async createNewFile(name: string,content:string) {
 		try {
+			console.log('createNewFile:', name,"content:",content);
 			await this.app.vault.create(name, content || "");
 		} catch (error) {
-			console.error("创建文件失败:", error);
+			throw new Error("创建文件失败"+ error);
 		}
 	}
 	async translateByAi() {
