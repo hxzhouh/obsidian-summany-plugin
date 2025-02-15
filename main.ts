@@ -43,11 +43,18 @@ export default class SummanyPlugin extends Plugin {
 		const copilot = new Copilot(llmProvider);
 
 		this.addSettingTab(new SummanySettingTab(this.app, this));
-
 		this.fileUtils = new FileUtils(this.app);
+		this.addCommand({
+			id: 'create image',
+			name: 'create image',
 
+			callback:async () => {
+				const response= copilot.CreateImage('title','logo');
+				console.log(response);
+			}
+		});
         this.addCommand({
-            id: 'summary by openai',
+            id: 'summary by ai',
             name: 'Generate Summary',
             callback: () => this.addSummany(),
         });
@@ -196,7 +203,6 @@ export default class SummanyPlugin extends Plugin {
 			return "";
 		}
 	}
-
     async addSummany() {
 		console.log('call addSummany');
 		await this.fileUtils.withActiveFile(async ({view, isZhCN}) => {

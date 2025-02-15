@@ -9,7 +9,7 @@ export class LLMFactory {
         return new OpenAIProvider(config);
       case 'gemini':
         return new GeminiProvider(config);
-        case 'deepseek':
+        case 'deepSeek':
         return new DeepSeekProvider(config);
       default:
         throw new Error(`Unknown LLM type: ${type}`);
@@ -31,4 +31,5 @@ export interface LLMConfig {
 export interface LLMProvider {
   generateContent(prompt: string, content: string): Promise<LLMResponse>;
   checkConfig(): Promise<boolean>;
+  createImage(title:string,logo:string): Promise<LLMResponse>
 }

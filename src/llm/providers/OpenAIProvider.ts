@@ -37,4 +37,8 @@ export class OpenAIProvider implements LLMProvider {
       return false;
     }
   }
+  async createImage(title:string,logo:string): Promise<LLMResponse> {
+    console.log("Creating image by OpenAIProvider");
+    throw new Error("Method not implemented.");
+  }
 }

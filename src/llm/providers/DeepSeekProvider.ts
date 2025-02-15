@@ -36,4 +36,9 @@ export class DeepSeekProvider implements LLMProvider {
       return false;
     }
   }
+  async createImage(title:string,logo:string): Promise<LLMResponse> {
+    console.log("Creating image by DeepSeekProvider");
+
+    throw new Error("Method not implemented.");
+  }
 }

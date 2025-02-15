@@ -71,6 +71,18 @@ export class Copilot {
     async CheckConfig(): Promise<boolean> {
         return await this.llmProvider.checkConfig();
     }
+    async CreateImage(title:string,logo:string): Promise<string> {
+        try {
+            const response = await this.llmProvider.createImage(title,logo);
+            if (response.status !== 200) {
+                throw new Error(`Request failed with status: ${response.status}`);
+            }
+            return response.content
+        } catch (error) {
+            console.error("CreateImage error:", error);
+            throw error;
+        }
+    }
 }
 
 
@@ -141,7 +153,7 @@ export function GetLlmConfigByType(plugin: SummanyPlugin): LLMConfig {
                 baseUrl: plugin.settings.geminiApiUrl,
                 model: plugin.settings.geminiModel[0],
             };
-        case 'deepseek':
+        case 'deepSeek':
             return {
                 apiKey: plugin.settings.deepSeekApiKey,
                 baseUrl: plugin.settings.deepSeekApiUrl,
